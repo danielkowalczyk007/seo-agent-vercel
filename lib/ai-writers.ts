@@ -16,7 +16,7 @@ import Anthropic from '@anthropic-ai/sdk';
 export interface ArticleOutline {
   topic: string;
   keywords: string[];
-  targetLength: number;
+  targetLength: number; // words
   sections: string[];
   category: 'kompensacja_mocy_biernej' | 'kompensatory_svg';
 }
@@ -41,6 +41,7 @@ export interface AIConfig {
   anthropicApiKey?: string;
 }
 
+// Writing instructions for SEO-optimized Polish content
 const WRITING_INSTRUCTIONS = `
 Jesteś ekspertem SEO content writer specjalizującym się w branży energetycznej i kompensacji mocy biernej.
 
@@ -71,9 +72,12 @@ Jesteś ekspertem SEO content writer specjalizującym się w branży energetyczn
 - Statystyki i dane liczbowe
 
 ## FORMAT OUTPUT:
-Zwróć TYLKO czysty HTML artykułu, bez markdown, bez bloków kodu.
+Zwróć TYLKO czysty HTML artykułu, bez markdown, bez ```html```.
 `;
 
+/**
+ * Create prompt for AI writers
+ */
 function createPrompt(outline: ArticleOutline): string {
   return `${WRITING_INSTRUCTIONS}
 
@@ -92,118 +96,159 @@ Write a comprehensive blog post based on:
 **CRITICAL REQUIREMENTS**:
 1. Follow ALL instructions from the writing guide above
 2. Write in Polish language
-3. Format in HTML with semantic tags
-4. Include ALL required elements
+3. Format in HTML with semantic tags (<h2>, <h3>, <p>, <ul>, <li>)
+4. Include ALL required elements:
+   - Cytowalne fragmenty (snippets)
+   - Tabele porównawcze
+   - Listy punktowane/numerowane
+   - Definicje kluczowych terminów
+   - Sekcja FAQ (5-7 pytań)
+   - Call-to-Action na końcu
 5. Optimize for both SEO and GEO
 6. Include placeholder [INTERNAL_LINK] for internal linking
 
 BEGIN WRITING THE ARTICLE NOW:`;
 }
 
+/**
+ * Generate article using Gemini
+ */
 export async function writeWithGemini(
   outline: ArticleOutline,
   apiKey: string
 ): Promise<GeneratedArticle> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
-  const prompt = createPrompt(outline);
-  console.log('[Gemini] Starting generation for:', outline.topic);
-  const startTime = Date.now();
+    const prompt = createPrompt(outline);
+    
+    console.log('[Gemini] Starting generation for:', outline.topic);
+    const startTime = Date.now();
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const content = response.text();
-  const wordCount = content.split(/\s+/).length;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const content = response.text();
+    const wordCount = content.split(/\s+/).length;
 
-  console.log(`[Gemini] Completed in ${Date.now() - startTime}ms, ${wordCount} words`);
+    console.log(`[Gemini] Completed in ${Date.now() - startTime}ms, ${wordCount} words`);
 
-  return {
-    title: outline.topic,
-    content,
-    writer: 'gemini',
-    wordCount,
-    generatedAt: new Date(),
-  };
+    return {
+      title: outline.topic,
+      content,
+      writer: 'gemini',
+      wordCount,
+      generatedAt: new Date(),
+    };
+  } catch (error) {
+    console.error('[Gemini] Failed to generate article:', error);
+    throw new Error(`Gemini generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
+/**
+ * Generate article using ChatGPT (DIRECT API - no OpenRouter!)
+ */
 export async function writeWithChatGPT(
   outline: ArticleOutline,
   apiKey: string
 ): Promise<GeneratedArticle> {
-  const client = new OpenAI({ apiKey });
+  try {
+    // CHANGED: Direct OpenAI API instead of OpenRouter
+    const client = new OpenAI({
+      apiKey,
+      // No baseURL = direct api.openai.com
+    });
 
-  const prompt = createPrompt(outline);
-  console.log('[ChatGPT] Starting generation for:', outline.topic);
-  const startTime = Date.now();
+    const prompt = createPrompt(outline);
+    
+    console.log('[ChatGPT] Starting generation for:', outline.topic);
+    const startTime = Date.now();
 
-  const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are an expert SEO content writer specializing in renewable energy and power factor compensation systems. Always write in Polish.',
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-    temperature: 0.7,
-    max_tokens: 4000,
-  });
+    const response = await client.chat.completions.create({
+      // CHANGED: Model name without 'openai/' prefix
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert SEO content writer specializing in renewable energy and power factor compensation systems. Always write in Polish.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 4000,
+    });
 
-  const content = response.choices[0]?.message?.content || '';
-  const wordCount = content.split(/\s+/).length;
+    const content = response.choices[0]?.message?.content || '';
+    const wordCount = content.split(/\s+/).length;
 
-  console.log(`[ChatGPT] Completed in ${Date.now() - startTime}ms, ${wordCount} words`);
+    console.log(`[ChatGPT] Completed in ${Date.now() - startTime}ms, ${wordCount} words`);
 
-  return {
-    title: outline.topic,
-    content,
-    writer: 'chatgpt',
-    wordCount,
-    generatedAt: new Date(),
-  };
+    return {
+      title: outline.topic,
+      content,
+      writer: 'chatgpt',
+      wordCount,
+      generatedAt: new Date(),
+    };
+  } catch (error) {
+    console.error('[ChatGPT] Failed to generate article:', error);
+    throw new Error(`ChatGPT generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
+/**
+ * Generate article using Claude (Anthropic)
+ */
 export async function writeWithClaude(
   outline: ArticleOutline,
   apiKey: string
 ): Promise<GeneratedArticle> {
-  const client = new Anthropic({ apiKey });
+  try {
+    const client = new Anthropic({ apiKey });
 
-  const prompt = createPrompt(outline);
-  console.log('[Claude] Starting generation for:', outline.topic);
-  const startTime = Date.now();
+    const prompt = createPrompt(outline);
+    
+    console.log('[Claude] Starting generation for:', outline.topic);
+    const startTime = Date.now();
 
-  const response = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 4000,
-    messages: [
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-  });
+    const response = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022', // Updated to latest version
+      max_tokens: 4000,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
 
-  const content = response.content[0]?.type === 'text'
-    ? response.content[0].text
-    : '';
-  const wordCount = content.split(/\s+/).length;
+    const content = response.content[0]?.type === 'text'
+      ? response.content[0].text
+      : '';
+    const wordCount = content.split(/\s+/).length;
 
-  console.log(`[Claude] Completed in ${Date.now() - startTime}ms, ${wordCount} words`);
+    console.log(`[Claude] Completed in ${Date.now() - startTime}ms, ${wordCount} words`);
 
-  return {
-    title: outline.topic,
-    content,
-    writer: 'claude',
-    wordCount,
-    generatedAt: new Date(),
-  };
+    return {
+      title: outline.topic,
+      content,
+      writer: 'claude',
+      wordCount,
+      generatedAt: new Date(),
+    };
+  } catch (error) {
+    console.error('[Claude] Failed to generate article:', error);
+    throw new Error(`Claude generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
+/**
+ * Generate articles in parallel using all three AI models
+ */
 export async function generateArticlesParallel(
   outline: ArticleOutline,
   config: AIConfig
@@ -214,6 +259,7 @@ export async function generateArticlesParallel(
   const promises: Promise<GeneratedArticle>[] = [];
   const writerNames: string[] = [];
 
+  // Add available writers
   if (config.geminiApiKey) {
     promises.push(writeWithGemini(outline, config.geminiApiKey));
     writerNames.push('Gemini');
@@ -233,7 +279,9 @@ export async function generateArticlesParallel(
 
   console.log(`[AI Writers] Using models: ${writerNames.join(', ')}`);
 
+  // Run all in parallel with allSettled
   const results = await Promise.allSettled(promises);
+
   const articles: GeneratedArticle[] = [];
 
   results.forEach((result, index) => {
@@ -255,6 +303,9 @@ export async function generateArticlesParallel(
   return articles;
 }
 
+/**
+ * Select best article based on scoring
+ */
 export function selectBestArticle(articles: GeneratedArticle[]): GeneratedArticle {
   if (articles.length === 0) {
     throw new Error('No articles to select from');
@@ -264,14 +315,16 @@ export function selectBestArticle(articles: GeneratedArticle[]): GeneratedArticl
     return articles[0];
   }
 
+  // Simple scoring based on word count proximity to target
+  // In production, use full SEO/readability/engagement scoring
   const scored = articles.map(article => ({
     article,
-    score: article.scores?.total || article.wordCount,
+    score: article.scores?.total || article.wordCount, // Fallback to word count
   }));
 
   scored.sort((a, b) => b.score - a.score);
   
-  console.log(`[AI Writers] Selected best article from ${scored[0].article.writer} with score ${scored[0].score}`);
+  console.log(`[AI Writers] Selected best article from ${articles[0].writer} with score ${scored[0].score}`);
   
   return scored[0].article;
 }

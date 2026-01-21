@@ -1,101 +1,127 @@
+/**
+ * Vercel Serverless Function: Generate Article
+ * POST /api/generate
+ * 
+ * Generates SEO-optimized articles using multiple AI models in parallel
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateArticlesParallel, selectBestArticle, ArticleOutline, AIConfig } from '../lib/ai-writers';
+import { 
+  generateArticlesParallel, 
+  selectBestArticle,
+  type ArticleOutline,
+  type AIConfig 
+} from '../lib/ai-writers';
 
-// Predefined topics for each category
-const TOPICS = {
-  kompensacja_mocy_biernej: [
-    {
-      topic: 'Kompensacja mocy biernej w przemyśle - kompleksowy przewodnik',
-      keywords: ['kompensacja mocy biernej', 'baterie kondensatorów', 'cos phi', 'opłaty za moc bierną'],
-      sections: ['Czym jest moc bierna', 'Rodzaje kompensacji', 'Dobór baterii kondensatorów', 'Korzyści finansowe', 'FAQ'],
-    },
-    {
-      topic: 'Jak obniżyć rachunki za energię dzięki kompensacji mocy biernej',
-      keywords: ['oszczędności energia', 'kompensacja mocy biernej', 'redukcja kosztów', 'opłaty OSD'],
-      sections: ['Analiza rachunku za energię', 'Obliczanie strat', 'Rozwiązania kompensacji', 'ROI inwestycji', 'FAQ'],
-    },
-  ],
-  kompensatory_svg: [
-    {
-      topic: 'Kompensatory SVG vs baterie kondensatorów - porównanie technologii',
-      keywords: ['kompensator SVG', 'statyczny kompensator', 'STATCOM', 'jakość energii'],
-      sections: ['Zasada działania SVG', 'Porównanie z kondensatorami', 'Zastosowania przemysłowe', 'Analiza kosztów', 'FAQ'],
-    },
-    {
-      topic: 'Kompensatory SVG w instalacjach fotowoltaicznych',
-      keywords: ['SVG fotowoltaika', 'kompensacja PV', 'harmoniczne', 'jakość energii OZE'],
-      sections: ['Problemy jakości energii w PV', 'Rozwiązanie SVG', 'Integracja z instalacją', 'Case study', 'FAQ'],
-    },
-  ],
-};
+// Environment validation
+function getConfig(): AIConfig {
+  return {
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  };
+}
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST
+// Validate request body
+function validateOutline(body: unknown): ArticleOutline {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body is required');
+  }
+
+  const outline = body as Record<string, unknown>;
+
+  if (!outline.topic || typeof outline.topic !== 'string') {
+    throw new Error('topic is required and must be a string');
+  }
+
+  if (!Array.isArray(outline.keywords) || outline.keywords.length === 0) {
+    throw new Error('keywords is required and must be a non-empty array');
+  }
+
+  return {
+    topic: outline.topic,
+    keywords: outline.keywords as string[],
+    targetLength: typeof outline.targetLength === 'number' ? outline.targetLength : 1500,
+    sections: Array.isArray(outline.sections) ? outline.sections as string[] : [],
+    category: outline.category === 'kompensatory_svg' ? 'kompensatory_svg' : 'kompensacja_mocy_biernej',
+  };
+}
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Only POST allowed
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Optional API key authentication
-  const apiSecret = process.env.API_SECRET;
-  if (apiSecret) {
+  try {
+    // Validate API key (optional security layer)
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${apiSecret}`) {
+    if (process.env.API_SECRET && authHeader !== `Bearer ${process.env.API_SECRET}`) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-  }
 
-  try {
-    const { category, topicIndex } = req.body as { category?: string; topicIndex?: number };
+    // Parse and validate request
+    const outline = validateOutline(req.body);
+    const config = getConfig();
 
-    // Validate category
-    const validCategory = category === 'kompensatory_svg' ? 'kompensatory_svg' : 'kompensacja_mocy_biernej';
-    const topics = TOPICS[validCategory];
-    
-    // Select topic
-    const index = typeof topicIndex === 'number' ? topicIndex % topics.length : 0;
-    const selectedTopic = topics[index];
+    // Check if any API keys are configured
+    if (!config.geminiApiKey && !config.openaiApiKey && !config.anthropicApiKey) {
+      return res.status(500).json({ 
+        error: 'No AI API keys configured',
+        details: 'Set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY environment variables'
+      });
+    }
 
-    const outline: ArticleOutline = {
-      ...selectedTopic,
-      targetLength: 1500,
-      category: validCategory,
-    };
-
-    // Get AI config from environment
-    const config: AIConfig = {
-      geminiApiKey: process.env.GEMINI_API_KEY,
-      openaiApiKey: process.env.OPENAI_API_KEY,
-      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-    };
+    console.log(`[API] Generating article for: ${outline.topic}`);
+    const startTime = Date.now();
 
     // Generate articles in parallel
-    console.log('[API] Starting article generation for:', outline.topic);
     const articles = await generateArticlesParallel(outline, config);
 
     // Select best article
     const bestArticle = selectBestArticle(articles);
 
-    // Return results
+    const responseTime = Date.now() - startTime;
+    console.log(`[API] Completed in ${responseTime}ms`);
+
     return res.status(200).json({
       success: true,
-      article: {
-        title: bestArticle.title,
-        content: bestArticle.content,
-        writer: bestArticle.writer,
-        wordCount: bestArticle.wordCount,
-        generatedAt: bestArticle.generatedAt,
-      },
-      allArticles: articles.map(a => ({
-        writer: a.writer,
-        wordCount: a.wordCount,
-      })),
-      outline,
+      article: bestArticle,
+      alternatives: articles.filter(a => a.writer !== bestArticle.writer),
+      metadata: {
+        totalArticles: articles.length,
+        selectedWriter: bestArticle.writer,
+        responseTime,
+      }
     });
+
   } catch (error) {
-    console.error('[API] Generation failed:', error);
-    return res.status(500).json({
-      error: 'Generation failed',
-      message: error instanceof Error ? error.message : 'Unknown error',
+    console.error('[API] Error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const statusCode = errorMessage.includes('required') ? 400 : 500;
+
+    return res.status(statusCode).json({
+      success: false,
+      error: errorMessage,
     });
   }
 }
+
+// Vercel config for longer timeout (needed for AI generation)
+export const config = {
+  maxDuration: 60, // 60 seconds max (Pro plan allows up to 300s)
+};
