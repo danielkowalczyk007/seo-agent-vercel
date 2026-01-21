@@ -1,0 +1,37 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "name": "seo-agent-powergo",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".vercel/output",
+  "functions": {
+    "api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 120
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/schedule",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/schedule",
+      "schedule": "0 8 * * 4"
+    }
+  ],
+  "env": {
+    "TZ": "Europe/Warsaw"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    }
+  ]
+}
