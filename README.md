@@ -1,6 +1,6 @@
 # SEO Agent dla PowerGO - Vercel Version
 
-🚀 **Zmigrowana wersja z Manus na Vercel** - oszczędność ~98% kosztów!
+🚀 **Zmigrowana wersja z Manus na Vercel
 
 ## Porównanie kosztów
 
