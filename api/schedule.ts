@@ -19,46 +19,46 @@ import {
 const TOPICS = {
   kompensacja_mocy_biernej: [
     {
-      topic: 'Kompensacja mocy biernej - podstawy i korzyści dla przedsiębiorstw',
-      keywords: ['kompensacja mocy biernej', 'oszczędności energii', 'koszty energii', 'współczynnik mocy'],
-      sections: ['Czym jest moc bierna', 'Dlaczego warto kompensować', 'Korzyści finansowe', 'FAQ'],
+      topic: 'Kompensacja mocy biernej - podstawy i korzysci dla przedsiebiorstw',
+      keywords: ['kompensacja mocy biernej', 'oszczednosci energii', 'koszty energii', 'wspolczynnik mocy'],
+      sections: ['Czym jest moc bierna', 'Dlaczego warto kompensowac', 'Korzysci finansowe', 'FAQ'],
     },
     {
-      topic: 'Jak obliczyć zapotrzebowanie na kompensację mocy biernej?',
+      topic: 'Jak obliczyc zapotrzebowanie na kompensacje mocy biernej?',
       keywords: ['obliczanie mocy biernej', 'kalkulacja kompensacji', 'analiza energetyczna'],
-      sections: ['Wzory obliczeniowe', 'Przykłady praktyczne', 'Narzędzia do obliczeń', 'FAQ'],
+      sections: ['Wzory obliczeniowe', 'Przyklady praktyczne', 'Narzedzia do obliczen', 'FAQ'],
     },
     {
-      topic: 'Kary za niską wartość współczynnika mocy cosφ - jak ich uniknąć?',
-      keywords: ['kary za moc bierną', 'współczynnik mocy', 'cosφ', 'opłaty za energię'],
-      sections: ['Regulacje prawne', 'Wysokość kar', 'Metody unikania kar', 'FAQ'],
+      topic: 'Kary za niska wartosc wspolczynnika mocy cos phi - jak ich uniknac?',
+      keywords: ['kary za moc bierna', 'wspolczynnik mocy', 'cos phi', 'oplaty za energie'],
+      sections: ['Regulacje prawne', 'Wysokosc kar', 'Metody unikania kar', 'FAQ'],
     },
     {
-      topic: 'Kompensacja mocy biernej w instalacjach przemysłowych - case study',
-      keywords: ['kompensacja przemysłowa', 'instalacje fabryczne', 'optymalizacja energii'],
-      sections: ['Opis problemu', 'Rozwiązanie', 'Wyniki', 'Wnioski', 'FAQ'],
+      topic: 'Kompensacja mocy biernej w instalacjach przemyslowych - case study',
+      keywords: ['kompensacja przemyslowa', 'instalacje fabryczne', 'optymalizacja energii'],
+      sections: ['Opis problemu', 'Rozwiazanie', 'Wyniki', 'Wnioski', 'FAQ'],
     },
   ],
   kompensatory_svg: [
     {
-      topic: 'Kompensatory SVG vs tradycyjne baterie kondensatorów - porównanie',
-      keywords: ['kompensator SVG', 'bateria kondensatorów', 'porównanie systemów'],
-      sections: ['Zasada działania SVG', 'Zalety i wady', 'Kiedy wybrać SVG', 'FAQ'],
+      topic: 'Kompensatory SVG vs tradycyjne baterie kondensatorow - porownanie',
+      keywords: ['kompensator SVG', 'bateria kondensatorow', 'porownanie systemow'],
+      sections: ['Zasada dzialania SVG', 'Zalety i wady', 'Kiedy wybrac SVG', 'FAQ'],
     },
     {
       topic: 'Instalacja i uruchomienie kompensatora SVG - przewodnik techniczny',
       keywords: ['instalacja SVG', 'uruchomienie kompensatora', 'parametryzacja'],
-      sections: ['Wymagania instalacyjne', 'Procedura montażu', 'Konfiguracja', 'FAQ'],
+      sections: ['Wymagania instalacyjne', 'Procedura montazu', 'Konfiguracja', 'FAQ'],
     },
     {
-      topic: 'Kompensatory SVG w sieciach z dużą zawartością harmonicznych',
-      keywords: ['harmoniczne', 'SVG', 'jakość energii', 'filtracja harmonicznych'],
-      sections: ['Problem harmonicznych', 'Jak SVG eliminuje harmoniczne', 'Przykłady', 'FAQ'],
+      topic: 'Kompensatory SVG w sieciach z duza zawartoscia harmonicznych',
+      keywords: ['harmoniczne', 'SVG', 'jakosc energii', 'filtracja harmonicznych'],
+      sections: ['Problem harmonicznych', 'Jak SVG eliminuje harmoniczne', 'Przyklady', 'FAQ'],
     },
     {
       topic: 'ROI z inwestycji w kompensator SVG - analiza zwrotu',
-      keywords: ['ROI kompensator', 'zwrot z inwestycji', 'oszczędności SVG'],
-      sections: ['Koszty inwestycji', 'Oszczędności', 'Okres zwrotu', 'Kalkulacja ROI', 'FAQ'],
+      keywords: ['ROI kompensator', 'zwrot z inwestycji', 'oszczednosci SVG'],
+      sections: ['Koszty inwestycji', 'Oszczednosci', 'Okres zwrotu', 'Kalkulacja ROI', 'FAQ'],
     },
   ],
 };
@@ -94,7 +94,8 @@ async function publishToOdoo(article: { title: string; content: string }): Promi
     throw new Error(`Odoo API error: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return data as { id: number };
 }
 
 // Get topic based on day of week
