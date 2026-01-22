@@ -72,7 +72,7 @@ Jesteś ekspertem SEO content writer specjalizującym się w branży energetyczn
 - Statystyki i dane liczbowe
 
 ## FORMAT OUTPUT:
-Zwróć TYLKO czysty HTML artykułu, bez markdown, bez ```html```.
+Return ONLY clean HTML article, no markdown, no code blocks.
 `;
 
 /**
