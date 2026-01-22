@@ -21,9 +21,6 @@
       "schedule": "0 8 * * 4"
     }
   ],
-  "env": {
-    "TZ": "Europe/Warsaw"
-  },
   "headers": [
     {
       "source": "/api/(.*)",
