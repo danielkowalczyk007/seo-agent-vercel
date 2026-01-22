@@ -3,8 +3,6 @@
   "version": 2,
   "name": "seo-agent-powergo",
   "framework": null,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".vercel/output",
   "functions": {
     "api/**/*.ts": {
       "memory": 1024,
